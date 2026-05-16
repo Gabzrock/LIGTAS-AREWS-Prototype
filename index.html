@@ -1,22 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-
-  <head>
-    <meta charset="UTF-8">
-    <title>LIGTAS-AREWS Prototype</title>
-    
-
-  </head>
-    
-  <body>
-  <!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LIGTAS-AREWS Prototype</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <style>
         :root {
@@ -38,9 +30,22 @@
             padding: 20px;
         }
 
+        /* Container added to specify what part to screenshot */
+        #dashboard-content {
+            padding: 20px;
+            background-color: var(--bg-color);
+            max-width: 1200px;
+            margin: auto;
+        }
+
         header {
             text-align: center;
             margin-bottom: 30px;
+        }
+
+        .header-logo {
+            max-width: 150px;
+            margin-bottom: 15px;
         }
 
         header h1 {
@@ -52,6 +57,40 @@
         header p {
             margin: 5px 0 0 0;
             color: var(--text-muted);
+        }
+
+        /* Header Buttons Container */
+        .header-buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background-color: var(--accent-blue);
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-download {
+            background-color: var(--accent-green);
+        }
+
+        .btn-download:hover {
+            background-color: #218838;
         }
 
         /* Status & Values Grid */
@@ -100,70 +139,99 @@
         .card.warn { border-color: var(--accent-warning); }
         .card.soil { border-color: var(--accent-green); }
 
-        /* Charts Section */
-        .charts-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-        }
-
-        .chart-card {
+        /* Map Container Styling */
+        .map-card {
             background-color: var(--card-bg);
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
         }
-        
-        canvas {
-            width: 100% !important;
-            height: 300px !important;
+
+        .map-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 8px;
+            z-index: 1; 
+        }
+
+        /* Highlighted Timestamp Styling */
+        .timestamp-container {
+            text-align: center;
+            margin-top: 10px;
         }
 
         .timestamp {
-            text-align: center;
-            font-size: 0.9em;
-            color: var(--text-muted);
-            margin-top: 20px;
+            font-size: 1.1em;
+            color: #000;
+            background-color: #ffeb3b; /* Highlight Color */
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: inline-block;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>LIGTAS-AREWS Prototype</h1>
-        <p>Live Environmental Monitoring Dashboard</p>
-    </header>
+    <div id="dashboard-content">
+        <header>
+            <img src="https://raw.githubusercontent.com/Gabzrock/LIGTASAGADEWSV8.1-fallbackedition/refs/heads/main/MAINArtboard%201LIGTAS%20LOGO.png" alt="LIGTAS Logo" class="header-logo">
+            <h1>LIGTAS-AREWS Prototype</h1>
+            <p>Live Environmental Monitoring Dashboard</p>
+            
+            <div class="header-buttons">
+                <a href="https://ligtas.uplb.edu.ph/LIGTAS-AGAD_new_portal-main/" target="_blank" class="btn">LIGTAS Portal</a>
+                <a href="https://thingspeak.mathworks.com/channels/3001025" target="_blank" class="btn">Historical Data</a>
+                <a href="https://www.wunderground.com/dashboard/pws/ILOSBA47" target="_blank" class="btn">Weather Underground</a>
+                <button onclick="downloadDashboard()" class="btn btn-download">Download as Image</button>
+            </div>
+        </header>
 
-    <div class="grid-container">
-        <div class="card temp">
-            <h3>Temperature</h3>
-            <p class="value" id="val-temp">-- <span class="unit">°C</span></p>
+        <div class="grid-container">
+            <div class="card temp">
+                <h3>Temperature</h3>
+                <p class="value" id="val-temp">-- <span class="unit">°C</span></p>
+            </div>
+            <div class="card hum">
+                <h3>Humidity</h3>
+                <p class="value" id="val-hum">-- <span class="unit">%</span></p>
+            </div>
+            <div class="card soil">
+                <h3>Soil Moisture</h3>
+                <p class="value" id="val-soil">-- <span class="unit">%</span></p>
+            </div>
+            <div class="card rain">
+                <h3>7-day RainFall</h3>
+                <p class="value" id="val-dayrain">-- <span class="unit">mm</span></p>
+            </div>
+            <div class="card rain">
+                <h3>Rain Rate</h3>
+                <p class="value" id="val-rate">-- <span class="unit">mm/hr</span></p>
+            </div>
+            <div class="card warn">
+                <h3>Warning Level</h3>
+                <p class="value" id="val-warn">-- <span class="unit">Code</span></p>
+            </div>
         </div>
-        <div class="card hum">
-            <h3>Humidity</h3>
-            <p class="value" id="val-hum">-- <span class="unit">%</span></p>
+
+        <div class="map-card">
+            <h3>Device Location</h3>
+            <div id="map"></div>
         </div>
-        <div class="card soil">
-            <h3>Soil Moisture</h3>
-            <p class="value" id="val-soil">-- <span class="unit">%</span></p>
-        </div>
-        <div class="card rain">
-            <h3>7-day Antecedent+Cumulative Rain</h3>
-            <p class="value" id="val-dayrain">-- <span class="unit">mm</span></p>
-        </div>
-        <div class="card rain">
-            <h3>Rain Rate</h3>
-            <p class="value" id="val-rate">-- <span class="unit">mm/hr</span></p>
-        </div>
-        <div class="card warn">
-            <h3>Warning Level</h3>
-            <p class="value" id="val-warn">-- <span class="unit">Code</span></p>
+
+        <div class="timestamp-container">
+            <div class="timestamp" id="last-update">Last Updated: Waiting for data...</div>
         </div>
     </div>
-
-
-
-    <div class="timestamp" id="last-update">Last Updated: Waiting for data...</div>
 
     <script>
         // ==========================================
@@ -171,33 +239,52 @@
         // ==========================================
         const CHANNEL_ID = '3001025'; // Replace with your ThingSpeak Channel ID
         const READ_API_KEY = '17J4D5A22CI2G6O9'; // Add your Read API Key if the channel is private
-        const RESULTS_TO_FETCH = 30; // Number of data points to show on the charts
+        const RESULTS_TO_FETCH = 1; 
         
         // Timer for auto-refresh (60 seconds)
         const REFRESH_INTERVAL_MS = 60000;
 
-        // ==========================================
-        // CHART INITIALIZATION
-        // ==========================================
-        const ctxTemp = document.getElementById('tempHumChart').getContext('2d');
-        const tempHumChart = new Chart(ctxTemp, {
-            type: 'line',
-            data: { labels: [], datasets: [
-                { label: 'Temperature (°C)', borderColor: '#dc3545', backgroundColor: 'rgba(220, 53, 69, 0.1)', data: [], fill: true, tension: 0.3 },
-                { label: 'Soil Moisture (%)', borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)', data: [], fill: true, tension: 0.3 }
-            ]},
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-        });
+        // ** ADD YOUR GEOJSON URL HERE **
+        // Ensure the URL is accessible and allows CORS requests.
+        const GEOJSON_URL = 'https://raw.githubusercontent.com/Gabzrock/LIGTAS-AREWS-Prototype/refs/heads/main/LIGTAS-AREWS_UPLB%20(2).geojson'; 
 
-        const ctxRain = document.getElementById('rainChart').getContext('2d');
-        const rainChart = new Chart(ctxRain, {
-            type: 'bar',
-            data: { labels: [], datasets: [
-                { label: '7-day Antecedent+Cummulative rain (mm)', backgroundColor: '#17a2b8', data: [] },
-                { label: 'Hourly Rain (mm)', backgroundColor: '#007bff', data: [] }
-            ]},
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-        });
+        // ==========================================
+        // MAP INITIALIZATION (Leaflet.js)
+        // ==========================================
+        const deviceLat = 14.16542; // Default: UPLB latitude
+        const deviceLng = 121.24281; // Default: UPLB longitude
+        
+        const map = L.map('map').setView([deviceLat, deviceLng], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Add a marker and give it a default popup message until data loads
+        const marker = L.marker([deviceLat, deviceLng]).addTo(map)
+            .bindPopup('<b>LIGTAS-AREWS Sensor Node</b><br>Fetching data...')
+            .openPopup();
+
+        // Variable to hold our GeoJSON layer
+        let geoJsonLayer;
+
+        // Fetch and load the GeoJSON Layer
+        if (GEOJSON_URL && GEOJSON_URL !== 'YOUR_GEOJSON_URL_HERE.geojson') {
+            fetch(GEOJSON_URL)
+                .then(response => response.json())
+                .then(data => {
+                    geoJsonLayer = L.geoJSON(data, {
+                        style: function (feature) {
+                            // Default styling (Green/Safe) until ThingSpeak data arrives
+                            return { color: '#28a745', weight: 2, fillOpacity: 0.4 };
+                        }
+                    }).addTo(map);
+                })
+                .catch(error => {
+                    console.error("Error loading GeoJSON file:", error);
+                });
+        }
 
         // ==========================================
         // FETCH DATA FROM THINGSPEAK
@@ -218,65 +305,103 @@
             } catch (error) {
                 console.error("Error fetching data from ThingSpeak:", error);
                 document.getElementById('last-update').innerText = "Error fetching data. Check internet or API credentials.";
+                marker.setPopupContent('<b>LIGTAS-AREWS Sensor Node</b><br><span style="color:red;">Error fetching data.</span>');
             }
         }
 
         // ==========================================
-        // UPDATE UI ELEMENTS
+        // UPDATE UI ELEMENTS, MAP POPUP & GEOJSON COLOR
         // ==========================================
         function updateDashboard(feeds) {
-            // Get the absolute latest feed (last item in the array)
+            // Get the absolute latest feed
             const latest = feeds[feeds.length - 1];
 
+            // Parse all values needed
+            const tempVal = parseFloat(latest.field1 || 0).toFixed(1);
+            const humVal = parseFloat(latest.field2 || 0).toFixed(1);
+            const soilVal = parseFloat(latest.field8 || 0).toFixed(1);
+            const dayRainVal = parseFloat(latest.field5 || 0).toFixed(2);
+            const rateVal = parseFloat(latest.field6 || 0).toFixed(2);
+            const warnVal = parseInt(latest.field7 || 0);
+
             // 1. Update Number Cards
-            // Check if field exists, otherwise show '0.0'
-            document.getElementById('val-temp').innerHTML = `${parseFloat(latest.field1 || 0).toFixed(1)} <span class="unit">°C</span>`;
-            document.getElementById('val-hum').innerHTML = `${parseFloat(latest.field2 || 0).toFixed(1)} <span class="unit">%</span>`;
-            document.getElementById('val-dayrain').innerHTML = `${parseFloat(latest.field5 || 0).toFixed(2)} <span class="unit">mm</span>`;
-            document.getElementById('val-rate').innerHTML = `${parseFloat(latest.field6 || 0).toFixed(2)} <span class="unit">mm/hr</span>`;
-            document.getElementById('val-warn').innerHTML = `${latest.field7 || 0} <span class="unit">Code</span>`;
-            document.getElementById('val-soil').innerHTML = `${parseFloat(latest.field8 || 0).toFixed(1)} <span class="unit">%</span>`;
+            document.getElementById('val-temp').innerHTML = `${tempVal} <span class="unit">°C</span>`;
+            document.getElementById('val-hum').innerHTML = `${humVal} <span class="unit">%</span>`;
+            document.getElementById('val-soil').innerHTML = `${soilVal} <span class="unit">%</span>`;
+            document.getElementById('val-dayrain').innerHTML = `${dayRainVal} <span class="unit">mm</span>`;
+            document.getElementById('val-rate').innerHTML = `${rateVal} <span class="unit">mm/hr</span>`;
+            document.getElementById('val-warn').innerHTML = `${warnVal} <span class="unit">Code</span>`;
 
-            // Change Warning Card color dynamically based on danger level
+            // 2. Determine Color based on Warning Level
+            let warnColor = '#28a745'; // Default Green (Level 0)
+            if(warnVal === 1) warnColor = '#ffc107'; // Yellow
+            else if(warnVal === 2) warnColor = '#fd7e14'; // Orange
+            else if(warnVal >= 3) warnColor = '#dc3545'; // Red
+
+            // Apply color to Warning Card
             const warnCard = document.querySelector('.card.warn');
-            const warnLvl = parseInt(latest.field7 || 0);
-            if(warnLvl === 0) warnCard.style.borderColor = '#28a745'; // Green
-            else if(warnLvl === 1) warnCard.style.borderColor = '#ffc107'; // Yellow
-            else if(warnLvl === 2) warnCard.style.borderColor = '#fd7e14'; // Orange
-            else if(warnLvl >= 3) warnCard.style.borderColor = '#dc3545'; // Red
+            warnCard.style.borderColor = warnColor;
 
-            // 2. Prepare Data Arrays for Charts
-            const labels = [];
-            const tempData = [], soilData = [];
-            const dayRainData = [], hrRainData = [];
+            // 3. Synchronize GeoJSON Layer Color
+            if (geoJsonLayer) {
+                geoJsonLayer.setStyle({
+                    color: warnColor,
+                    fillColor: warnColor
+                });
+            }
 
-            feeds.forEach(feed => {
-                // Format the timestamp nicely
-                const date = new Date(feed.created_at);
-                const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                labels.push(timeStr);
+            // 4. Update Map Marker Popup Data
+            const popupHTML = `
+                <div style="font-family: sans-serif; min-width: 150px;">
+                    <h4 style="margin: 0 0 8px 0; color: #007bff; text-align: center;">AWS Status</h4>
+                    <hr style="margin: 5px 0;">
+                    <b>Temp:</b> ${tempVal} °C<br>
+                    <b>Humidity:</b> ${humVal} %<br>
+                    <b>Soil:</b> ${soilVal} %<br>
+                    <b>Rain (7d):</b> ${dayRainVal} mm<br>
+                    <b>Rain Rate:</b> ${rateVal} mm/hr<br>
+                    <b>Warn Code:</b> <span style="color: ${warnColor}; font-weight: bold;">${warnVal}</span>
+                </div>
+            `;
+            marker.setPopupContent(popupHTML);
 
-                tempData.push(feed.field1);
-                soilData.push(feed.field8);
-                
-                hrRainData.push(feed.field4);
-                dayRainData.push(feed.field5);
-            });
-
-            // 3. Update Chart Objects
-            tempHumChart.data.labels = labels;
-            tempHumChart.data.datasets.data = tempData;
-            tempHumChart.data.datasets.data = soilData;
-            tempHumChart.update();
-
-            rainChart.data.labels = labels;
-            rainChart.data.datasets.data = dayRainData;
-            rainChart.data.datasets.data = hrRainData;
-            rainChart.update();
-
-            // 4. Update Last Updated Text
+            // 5. Update Last Updated Text
             const lastTime = new Date(latest.created_at);
             document.getElementById('last-update').innerText = "Last Updated: " + lastTime.toLocaleString();
+        }
+
+        // ==========================================
+        // DOWNLOAD DASHBOARD AS IMAGE
+        // ==========================================
+        function downloadDashboard() {
+            const downloadBtn = document.querySelector('.btn-download');
+            const originalText = downloadBtn.innerText;
+            downloadBtn.innerText = "Processing...";
+            
+            const element = document.getElementById('dashboard-content');
+            
+            html2canvas(element, { 
+                scale: 2, 
+                useCORS: true, 
+                backgroundColor: '#f4f7f6',
+                onclone: function(clonedDoc) {
+                    const mapContainer = clonedDoc.getElementById('map');
+                    if(mapContainer) {
+                        mapContainer.style.transform = "none";
+                    }
+                }
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'LIGTAS-Dashboard.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                downloadBtn.innerText = originalText;
+            }).catch(error => {
+                console.error("Error capturing dashboard image:", error);
+                alert("Failed to capture image. Please try again.");
+                downloadBtn.innerText = originalText;
+            });
         }
 
         // Initialize dashboard and set interval
@@ -285,8 +410,4 @@
 
     </script>
 </body>
-</html>
-    
-  </body>
-  
 </html>
